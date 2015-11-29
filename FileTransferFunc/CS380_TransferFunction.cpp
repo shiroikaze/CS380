@@ -1,6 +1,7 @@
 
 #include "stdafx.h"
 #include <iostream>
+#include <iomanip>
 //#include <fstream>
 //#include <sstream>
 #include <boost/asio.hpp>
@@ -14,7 +15,7 @@ using boost::asio::ip::tcp;
 const std::string port = "1234";					// Default port
 const std::string uploadPath = "../data/";			// Location of file to upload
 const std::string downloadPath = "../downloads/";	// Location to put downloaded file
-const int chunk_size = 256;							// Chunk size used.
+const int chunk_size = 9999;						// Chunk size used. 9999Bytes
 
 
 /*
@@ -115,9 +116,25 @@ void startServer() {
 	} while (in_stream.gcount()>0);
 
 	std::cout << std::endl;
+
+
+	//Chunk info.
+	int currSize = 0;
+	int count = 0;
+
 	// Writing the file
 	while (true) {
 		size_t len = socket.read_some(boost::asio::buffer(buf), error);
+
+		//Print out Chunk info.
+		currSize += len;
+		count++;
+		std::cout << "Receiving Chunk #" << std::setw(5) << std::left << count << ": ";
+		std::cout << "Length: " << std::setw(10) << std::left << len << " ";
+		std::cout << "Cur Size: " << std::setw(10) << std::left << currSize << std::endl;
+		
+
+
 		if (len>0)
 			outputFile.write(buf.c_array(), (std::streamsize)len);
 		if (outputFile.tellp() == (std::fstream::pos_type)(std::streamsize)fileSize)
@@ -196,6 +213,11 @@ void startClient(std::string serverIP) {
 
 	//Sending file
 	std::cout << "Sending file...\n";
+
+	//Chunk info counting.
+	int currSize = 0;
+	int count = 0;
+
 	while (true) {
 		if (source.eof() == false) {
 			source.read(buf.c_array(), (std::streamsize)buf.size());
@@ -205,6 +227,16 @@ void startClient(std::string serverIP) {
 			boost::asio::write(socket,
 				boost::asio::buffer(buf.c_array(), source.gcount()),
 				boost::asio::transfer_all(), error);
+
+			//Print out Chunk info.
+			currSize += source.gcount();
+			count++;
+			std::cout << "Sending Chunk #" << std::setw(5) << std::left << count << ": ";
+			std::cout << "Length: " << std::setw(10) << std::left << source.gcount() << " ";
+			std::cout << "Cur Size: " << std::setw(10) << std::left << currSize << std::endl;
+
+
+
 			if (error) {
 				std::cout << "Error: " << error << std::endl;
 			}
