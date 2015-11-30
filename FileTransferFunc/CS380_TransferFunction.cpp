@@ -17,6 +17,25 @@ const std::string uploadPath = "data/";			// Location of file to upload
 const std::string downloadPath = "downloads/";	// Location to put downloaded file
 const int chunk_size = 9999;						// Chunk size used. 9999Bytes
 
+//// hash
+boost::array<char, 20> checkSumHash(boost::array<char, chunk_size> buf) {
+
+	char hash[20];
+
+	for (int i = 0; i < chunk_size; i++) {
+		char c = buf.at(i);
+
+		hash[i % 20] = c ^ hash[i % 20];
+	}
+
+	boost::array<char, 20> s;
+
+	for (int i = 0; i < 20; i++) {
+		s.at(i) = hash[i];
+	}
+
+	return s;
+}
 
 /*
 This is for reading inside the directory to find what available files can be used.
@@ -120,6 +139,11 @@ void startServer() {
 	int count = 0;
 	// Writing the file
 	while (true) {
+		//boost::asio::read_until(socket, request_buf, "\n");							// Read until newline char
+		//std::istream request_checksum(&request_buf);								// Read in requested checksum
+		//std::string checksum;
+		//request_checksum >> checksum;
+		//std::cout << checksum << std::endl;
 		size_t len = socket.read_some(boost::asio::buffer(buf), error);
 
 		//Print out Chunk info.
@@ -131,6 +155,12 @@ void startServer() {
 
 		if (len>0)
 			outputFile.write(buf.c_array(), (std::streamsize)len);
+		//if (checksum == buf.c_array()) {
+		//	std::cout << "checksum match!" << std::endl;
+		//}
+		//else { std::cout << "checksum fail!" << std::endl; }
+
+
 		if (outputFile.tellp() == (std::fstream::pos_type)(std::streamsize)fileSize)
 			break; // file was received
 		if (error)
@@ -155,8 +185,8 @@ exit(1); }
 }
 */
 
-void bigCodeBlock1(tcp::socket &socket, std::ifstream &source, boost::system::error_code error, std::string fileName, int i);
-void bigCodeBlock2(tcp::socket &socket, std::ifstream &source, boost::system::error_code error, std::string fileName, int i);
+void bigCodeBlock1(std::ostream &request_stream, boost::asio::streambuf &request_buf, tcp::socket &socket, std::ifstream &source, boost::system::error_code error, std::string fileName, int i);
+void bigCodeBlock2(std::ostream &request_stream, boost::asio::streambuf &request_buf, tcp::socket &socket, std::ifstream &source, boost::system::error_code error, std::string fileName, int i);
 
 // Client receives file... Correction: Client receives file.
 void startClient(std::string serverIP) {
@@ -230,12 +260,12 @@ void startClient(std::string serverIP) {
 				std::getline(std::cin, input);
 				std::cout << std::endl;
 				if (input == "1") {
-					bigCodeBlock1(socket, source, error, fileName, i); 
+					bigCodeBlock1(request_stream, request_buf, socket, source, error, fileName, i);
 					i = 4;			//exits out of for-loop
 					break; 
 				}
 				else if (input == "2") { 
-					bigCodeBlock1(socket, source, error, fileName, i);
+					bigCodeBlock1(request_stream, request_buf, socket, source, error, fileName, i);
 					i = 4;			//exits out of for-loop
 					break;
 				}
@@ -334,7 +364,7 @@ void startClient(std::string serverIP) {
 }
 
 //ugly blocks
-void bigCodeBlock1(tcp::socket &socket, std::ifstream &source, boost::system::error_code error, std::string fileName, int i) {
+void bigCodeBlock1(std::ostream &request_stream, boost::asio::streambuf &request_buf, tcp::socket &socket, std::ifstream &source, boost::system::error_code error, std::string fileName, int i) {
 	boost::array<char, chunk_size> buf;
 	std::string input = "";
 	int currSize = 0;
@@ -349,7 +379,15 @@ void bigCodeBlock1(tcp::socket &socket, std::ifstream &source, boost::system::er
 	if (input == "1") {
 		while (true) {
 			if (source.eof() == false) {
+				//checkSumHash(buf);
 				source.read(buf.c_array(), (std::streamsize)buf.size());
+				//std::string checksum = checkSumHash(buf).c_array();
+				//std::cout << "Checksum: " << std::hex << checkSumHash(buf) << std::endl;
+				//std::ostream request_stream(&request_buf);
+				//request_stream << checksum << "\n";
+				//boost::asio::write(socket, request_buf);
+				//source.read(checkSumHash(buf).c_array(), (std::streamsize)checkSumHash(buf).size());
+
 				if (source.gcount() <= 0) {
 					std::cout << "Read error.\n";
 				}
@@ -399,7 +437,7 @@ void bigCodeBlock1(tcp::socket &socket, std::ifstream &source, boost::system::er
 	}
 }
 
-void bigCodeBlock2(tcp::socket &socket, std::ifstream &source, boost::system::error_code error, std::string fileName, int i) {}
+void bigCodeBlock2(std::ostream &request_stream, boost::asio::streambuf &request_buf, tcp::socket &socket, std::ifstream &source, boost::system::error_code error, std::string fileName, int i) {}
 
 
 int _tmain(int argc, _TCHAR* argv[])
