@@ -155,6 +155,9 @@ exit(1); }
 }
 */
 
+void bigCodeBlock1(tcp::socket &socket, std::ifstream &source, boost::system::error_code error, std::string fileName, int i);
+void bigCodeBlock2(tcp::socket &socket, std::ifstream &source, boost::system::error_code error, std::string fileName, int i);
+
 // Client receives file... Correction: Client receives file.
 void startClient(std::string serverIP) {
 	boost::asio::io_service io_service;
@@ -173,7 +176,7 @@ void startClient(std::string serverIP) {
 
 	if (serverIP == "") { serverIP = "127.0.0.1"; }					//So the below print won't have a blank
 	std::cout << "Connected to " << serverIP << ":" << port << std::endl;
-	boost::array<char, chunk_size> buf;
+	//boost::array<char, chunk_size> buf;
 	boost::asio::streambuf request_buf;
 
 	/*
@@ -215,12 +218,33 @@ void startClient(std::string serverIP) {
 			std::cout << "Sending file...\n";
 
 			//Chunk info counting.
-			int currSize = 0;
-			int count = 0;
+			//int currSize = 0;
+			//int count = 0;
 
 			//Choose success/some failure/total failure states here?
 			std::string input = "";
 			while (true){
+				std::cout << "(1) No ASCII-armoring" << std::endl;
+				std::cout << "(2) ASCII-armoring" << std::endl;
+				std::cout << "Please select: ";
+				std::getline(std::cin, input);
+				std::cout << std::endl;
+				if (input == "1") {
+					bigCodeBlock1(socket, source, error, fileName, i); 
+					i = 4;			//exits out of for-loop
+					break; 
+				}
+				else if (input == "2") { 
+					bigCodeBlock1(socket, source, error, fileName, i);
+					i = 4;			//exits out of for-loop
+					break;
+				}
+				else {
+					std::cout << "Invalid input.\n" << std::endl;
+				}
+			}
+			/*while (true){
+				
 				std::cout << "(1) Successful transfer"<< std::endl;
 				std::cout << "(2) Partial failure" << std::endl;
 				std::cout << "(3) Total failure" << std::endl;
@@ -257,21 +281,125 @@ void startClient(std::string serverIP) {
 				}
 				else if (input == "2") {
 					//partial fail, some code reuse here
+					for (int j = 0; j < 3; j++) {
+						while (true) {
+							if (source.eof() == false) {
+								source.read(buf.c_array(), (std::streamsize)buf.size());
+								if (source.gcount() <= 0) {
+									std::cout << "Read error.\n";
+								}
+
+								boost::asio::write(socket,
+									boost::asio::buffer(buf.c_array(), source.gcount()),
+									boost::asio::transfer_all(), error);
+
+								//Print out Chunk info.
+								currSize += source.gcount();
+								count++;
+								std::cout << "Sending Chunk #" << std::setw(5) << std::left << count << ": ";
+								std::cout << "Length: " << std::setw(10) << std::left << source.gcount() << " ";
+								std::cout << "Cur Size: " << std::setw(10) << std::left << currSize << std::endl;
+
+								if (error) {
+									std::cout << "Error: " << error << std::endl;
+								}
+							}
+							else { break; }
+						}
+					}
+
+					std::cout << "Task complete. " << fileName << " sent. Connection Terminated.\n" << std::endl;
 					//i = 4;			//exits out of for-loop
 					//break;
 				}
 				else if (input == "3") {
 					//total fail, some code reuse here
+					for (int j = 0; j < 3; j++) {
+					
+						//read checksum string
+						//compare
+
+					}
+
+					std::cout << "Task failed. " << fileName << " not sent. Connection Terminated.\n" << std::endl;
 					//i = 4;			//exits out of for-loop
 					//break;
 				}
 				else {
 					std::cout << "Invalid input.\n" << std::endl;
 				}
-			}
+			}*/
 		}
 	}
 }
+
+//ugly blocks
+void bigCodeBlock1(tcp::socket &socket, std::ifstream &source, boost::system::error_code error, std::string fileName, int i) {
+	boost::array<char, chunk_size> buf;
+	std::string input = "";
+	int currSize = 0;
+	int count = 0;
+	std::cout << "(1) Successful transfer" << std::endl;
+	std::cout << "(2) Partial failure" << std::endl;
+	std::cout << "(3) Total failure" << std::endl;
+	std::cout << "Please select: ";
+	std::getline(std::cin, input);
+	std::cout << std::endl;
+	//success
+	if (input == "1") {
+		while (true) {
+			if (source.eof() == false) {
+				source.read(buf.c_array(), (std::streamsize)buf.size());
+				if (source.gcount() <= 0) {
+					std::cout << "Read error.\n";
+				}
+				boost::asio::write(socket,
+					boost::asio::buffer(buf.c_array(), source.gcount()),
+					boost::asio::transfer_all(), error);
+
+				//Print out Chunk info.
+				currSize += source.gcount();
+				count++;
+				std::cout << "Sending Chunk #" << std::setw(5) << std::left << count << ": ";
+				std::cout << "Length: " << std::setw(10) << std::left << source.gcount() << " ";
+				std::cout << "Cur Size: " << std::setw(10) << std::left << currSize << std::endl;
+
+				if (error) {
+					std::cout << "Error: " << error << std::endl;
+				}
+			}
+			else { break; }
+		}
+		std::cout << "Task complete. " << fileName << " sent. Connection Terminated.\n" << std::endl;		//Success
+		//break;
+	}
+	//part fail but transfer complete
+	else if (input == "2") {
+		//partial fail, some code reuse here
+		for (int j = 0; j < 3; j++) {
+			
+		}
+		std::cout << "Task complete. " << fileName << " sent. Connection Terminated.\n" << std::endl;
+		//break;
+	}
+	//total fail, abort transfer
+	else if (input == "3") {
+		//total fail, some code reuse here
+		for (int j = 0; j < 3; j++) {
+
+			//read checksum string
+			//compare
+
+		}
+		std::cout << "Task failed. " << fileName << " not sent. Connection Terminated.\n" << std::endl;
+		//break;
+	}
+	else {
+		std::cout << "Invalid input.\n" << std::endl;
+	}
+}
+
+void bigCodeBlock2(tcp::socket &socket, std::ifstream &source, boost::system::error_code error, std::string fileName, int i) {}
 
 
 int _tmain(int argc, _TCHAR* argv[])
